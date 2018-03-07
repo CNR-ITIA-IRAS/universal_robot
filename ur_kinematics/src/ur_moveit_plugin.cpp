@@ -479,7 +479,7 @@ bool URKinematicsPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
                           consistency_limits,
                           options);
 }
-
+  
 bool URKinematicsPlugin::getPositionIK( const std::vector<geometry_msgs::Pose> &ik_poses,
                                         const std::vector<double> &ik_seed_state,
                                         std::vector< std::vector<double> >& solutions,
@@ -803,13 +803,16 @@ bool URKinematicsPlugin::getAllIK(const geometry_msgs::Pose &ik_pose,
       int cur_idx = weighted_diffs[i].first;
       solutions.push_back( q_ik_valid_sols[cur_idx] );
 
+      moveit_msgs::MoveItErrorCodes error_code;
       // see if this solution passes the callback function test
       if(!solution_callback.empty())
-        solution_callback(ik_pose, solutions.back(), error_code_);
+        
+        solution_callback(ik_pose, solutions.back(), error_code);
+
       else
         error_code.val = error_code.SUCCESS;
 
-      oks.push_back( (error_code_.val == error_code_.SUCCESS) );
+      oks.push_back( (error_code.val == error_code_.SUCCESS) );
       if(error_code.val == error_code.SUCCESS) {
 #if 0
         std::vector<std::string> fk_link_names;
