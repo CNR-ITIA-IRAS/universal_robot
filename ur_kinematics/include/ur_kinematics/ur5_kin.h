@@ -35,8 +35,8 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
-#ifndef UR_KIN_H
-#define UR_KIN_H
+#ifndef UR5_KIN_H
+#define UR5_KIN_H
 
 // These kinematics find the tranfrom from the base link to the end effector.
 // Though the raw D-H parameters specify a transform from the 0th link to the 6th link,
@@ -70,7 +70,7 @@ namespace ur_kinematics {
   // @param q6_des  An optional parameter which designates what the q6 value should take
   //                in case of an infinite solution on that joint.
   // @return        Number of solutions found (maximum of 8)
-  int inverse(const double* T, double* q_sols, double q6_des=0.0);
+  int ur5_inverse(const double* T, double* q_sols, double q6_des=0.0);
 };
 
 #endif //UR_KIN_H

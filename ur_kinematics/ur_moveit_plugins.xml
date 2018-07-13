@@ -1,5 +1,5 @@
 <library path="lib/libur3_moveit_plugin">
-  <class name="ur_kinematics/UR3KinematicsPlugin" type="ur_kinematics::URKinematicsPlugin" base_class_type="kinematics::KinematicsBase">
+  <class name="ur_kinematics/UR3KinematicsPlugin" type="ur_kinematics::UR3KinematicsPlugin" base_class_type="kinematics::KinematicsBase">
     <description>
       Analytic kinematics for the Universal Robots UR3.
       Developed by Kelsey Hawkins from Georgia Tech.
@@ -9,7 +9,7 @@
 </library>
 
 <library path="lib/libur5_moveit_plugin">
-  <class name="ur_kinematics/UR5KinematicsPlugin" type="ur_kinematics::URKinematicsPlugin" base_class_type="kinematics::KinematicsBase">
+  <class name="ur_kinematics/UR5KinematicsPlugin" type="ur_kinematics::UR5KinematicsPlugin" base_class_type="kinematics::KinematicsBase">
     <description>
       Analytic kinematics for the Universal Robots UR5.
       Developed by Kelsey Hawkins from Georgia Tech.
@@ -19,7 +19,7 @@
 </library>
 
 <library path="lib/libur10_moveit_plugin">
-  <class name="ur_kinematics/UR10KinematicsPlugin" type="ur_kinematics::URKinematicsPlugin" base_class_type="kinematics::KinematicsBase">
+  <class name="ur_kinematics/UR10KinematicsPlugin" type="ur_kinematics::UR10KinematicsPlugin" base_class_type="kinematics::KinematicsBase">
     <description>
       Analytic kinematics for the Universal Robots UR10.
       Developed by Kelsey Hawkins from Georgia Tech.

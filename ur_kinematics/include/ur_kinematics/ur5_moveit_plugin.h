@@ -72,8 +72,8 @@
 
 /* Author: Sachin Chitta, David Lu!!, Ugo Cupcic */
 
-#ifndef UR_KINEMATICS_PLUGIN_
-#define UR_KINEMATICS_PLUGIN_
+#ifndef UR5_KINEMATICS_PLUGIN_
+#define UR5_KINEMATICS_PLUGIN_
 
 // ROS
 #include <ros/ros.h>
@@ -108,14 +108,14 @@ namespace ur_kinematics
 /**
 * @brief Specific implementation of kinematics using KDL. This version can be used with any robot.
 */
-  class URKinematicsPlugin : public kinematics::KinematicsBase
+  class UR5KinematicsPlugin : public kinematics::KinematicsBase
   {
     public:
 
     /**
 * @brief Default constructor
 */
-    URKinematicsPlugin();
+    UR5KinematicsPlugin();
     
 
     virtual bool getPositionIK(const geometry_msgs::Pose &ik_pose,

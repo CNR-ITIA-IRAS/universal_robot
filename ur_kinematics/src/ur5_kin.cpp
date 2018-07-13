@@ -1,4 +1,4 @@
-#include <ur_kinematics/ur_kin.h>
+#include <ur_kinematics/ur5_kin.h>
 
 #include <math.h>
 #include <stdio.h>
@@ -13,35 +13,13 @@ namespace ur_kinematics {
     }
     const double PI = M_PI;
 
-    //#define UR10_PARAMS
-    #ifdef UR10_PARAMS
-    const double d1 =  0.1273;
-    const double a2 = -0.612;
-    const double a3 = -0.5723;
-    const double d4 =  0.163941;
-    const double d5 =  0.1157;
-    const double d6 =  0.0922;
-    #endif
 
-    //#define UR5_PARAMS
-    #ifdef UR5_PARAMS
     const double d1 =  0.089159;
     const double a2 = -0.42500;
     const double a3 = -0.39225;
     const double d4 =  0.10915;
     const double d5 =  0.09465;
     const double d6 =  0.0823;
-    #endif
-    
-    //#define UR3_PARAMS
-    #ifdef UR3_PARAMS
-    const double d1 =  0.1519;
-    const double a2 = -0.24365;
-    const double a3 = -0.21325;
-    const double d4 =  0.11235;
-    const double d5 =  0.08535;
-    const double d6 =  0.0819;
-    #endif
   }
 
   void forward(const double* q, double* T) {
@@ -202,7 +180,10 @@ namespace ur_kinematics {
     }
   }
 
-  int inverse(const double* T, double* q_sols, double q6_des) {
+  int ur5_inverse(const double* T, double* q_sols, double q6_des) {
+    
+   
+    
     int num_sols = 0;
     double T02 = -*T; T++; double T00 =  *T; T++; double T01 =  *T; T++; double T03 = -*T; T++; 
     double T12 = -*T; T++; double T10 =  *T; T++; double T11 =  *T; T++; double T13 = -*T; T++; 
@@ -397,7 +378,7 @@ IKFAST_API bool ComputeIk(const IkReal* eetrans, const IkReal* eerot, const IkRe
 
   to_mat44(T, eetrans, eerot);
 
-  int num_sols = ur_kinematics::inverse(T, q_sols,pfree[0]);
+  int num_sols = ur_kinematics::ur5_inverse(T, q_sols,pfree[0]);
 
   std::vector<int> vfree(0);
 
@@ -443,7 +424,7 @@ int main(int argc, char* argv[])
   }
   double q_sols[8*6];
   int num_sols;
-  num_sols = inverse(T, q_sols);
+  num_sols = ur5_inverse(T, q_sols);
   for(int i=0;i<num_sols;i++) 
     printf("%1.6f %1.6f %1.6f %1.6f %1.6f %1.6f\n", 
        q_sols[i*6+0], q_sols[i*6+1], q_sols[i*6+2], q_sols[i*6+3], q_sols[i*6+4], q_sols[i*6+5]);

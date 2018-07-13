@@ -85,20 +85,20 @@
 #include <moveit/rdf_loader/rdf_loader.h>
 
 // UR kin
-#include <ur_kinematics/ur_moveit_plugin.h>
-#include <ur_kinematics/ur_kin.h>
+#include <ur_kinematics/ur3_moveit_plugin.h>
+#include <ur_kinematics/ur3_kin.h>
 
 #include <kdl/frames_io.hpp>
 
 //register KDLKinematics as a KinematicsBase implementation
-CLASS_LOADER_REGISTER_CLASS(ur_kinematics::URKinematicsPlugin, kinematics::KinematicsBase)
+CLASS_LOADER_REGISTER_CLASS(ur_kinematics::UR3KinematicsPlugin, kinematics::KinematicsBase)
 
 namespace ur_kinematics
 {
 
-  URKinematicsPlugin::URKinematicsPlugin():active_(false) {}
+  UR3KinematicsPlugin::UR3KinematicsPlugin():active_(false) {}
 
-void URKinematicsPlugin::getRandomConfiguration(KDL::JntArray &jnt_array, bool lock_redundancy) const
+void UR3KinematicsPlugin::getRandomConfiguration(KDL::JntArray &jnt_array, bool lock_redundancy) const
 {
   std::vector<double> jnt_array_vector(dimension_, 0.0);
   state_->setToRandomPositions(joint_model_group_);
@@ -112,7 +112,7 @@ void URKinematicsPlugin::getRandomConfiguration(KDL::JntArray &jnt_array, bool l
   }
 }
 
-bool URKinematicsPlugin::isRedundantJoint(unsigned int index) const
+bool UR3KinematicsPlugin::isRedundantJoint(unsigned int index) const
 {
   for (std::size_t j=0; j < redundant_joint_indices_.size(); ++j)
     if (redundant_joint_indices_[j] == index)
@@ -120,7 +120,7 @@ bool URKinematicsPlugin::isRedundantJoint(unsigned int index) const
   return false;
 }
 
-void URKinematicsPlugin::getRandomConfiguration(const KDL::JntArray &seed_state,
+void UR3KinematicsPlugin::getRandomConfiguration(const KDL::JntArray &seed_state,
                                                  const std::vector<double> &consistency_limits,
                                                  KDL::JntArray &jnt_array,
                                                  bool lock_redundancy) const
@@ -157,7 +157,7 @@ void URKinematicsPlugin::getRandomConfiguration(const KDL::JntArray &seed_state,
   }
 }
 
-bool URKinematicsPlugin::checkConsistency(const KDL::JntArray& seed_state,
+bool UR3KinematicsPlugin::checkConsistency(const KDL::JntArray& seed_state,
                                            const std::vector<double> &consistency_limits,
                                            const KDL::JntArray& solution) const
 {
@@ -167,7 +167,7 @@ bool URKinematicsPlugin::checkConsistency(const KDL::JntArray& seed_state,
   return true;
 }
 
-bool URKinematicsPlugin::initialize(const std::string &robot_description,
+bool UR3KinematicsPlugin::initialize(const std::string &robot_description,
                                      const std::string& group_name,
                                      const std::string& base_frame,
                                      const std::string& tip_frame,
@@ -175,7 +175,7 @@ bool URKinematicsPlugin::initialize(const std::string &robot_description,
 {
   setValues(robot_description, group_name, base_frame, tip_frame, search_discretization);
 
-  ros::NodeHandle private_handle("~");
+  ros::NodeHandle private_handle("~/"+group_name);
   rdf_loader::RDFLoader rdf_loader(robot_description_);
   const boost::shared_ptr<srdf::Model> &srdf = rdf_loader.getSRDF();
 #if ROS_VERSION_MINIMUM(1, 13, 0) 
@@ -329,8 +329,8 @@ bool URKinematicsPlugin::initialize(const std::string &robot_description,
   max_solver_iterations_ = max_solver_iterations;
   epsilon_ = epsilon;
 
-  private_handle.param<std::string>("arm_prefix", arm_prefix_, "");
-
+  
+  private_handle.param<std::string>("arm_prefix", arm_prefix_, group_name_+"_");
   ur_joint_names_.push_back(arm_prefix_ + "shoulder_pan_joint");
   ur_joint_names_.push_back(arm_prefix_ + "shoulder_lift_joint");
   ur_joint_names_.push_back(arm_prefix_ + "elbow_joint");
@@ -370,8 +370,14 @@ bool URKinematicsPlugin::initialize(const std::string &robot_description,
   }
   // if successful, the kinematic chain includes a serial chain of the UR joints
 
-  kdl_tree.getChain(getBaseFrame(), ur_link_names_.front(), kdl_base_chain_);
-  kdl_tree.getChain(ur_link_names_.back(), getTipFrame(), kdl_tip_chain_);
+  if (!kdl_tree.getChain(getBaseFrame(), ur_link_names_.front(), kdl_base_chain_))
+  {
+    ROS_ERROR("Something wrong");
+  }
+  if (!kdl_tree.getChain(ur_link_names_.back(), getTipFrame(), kdl_tip_chain_))
+  {
+    ROS_ERROR("Something wrong");
+  }
 
   // weights for redundant solution selection
   ik_weights_.resize(6);
@@ -386,12 +392,15 @@ bool URKinematicsPlugin::initialize(const std::string &robot_description,
     ik_weights_[5] = 0.3;
   }
 
+
+  
+  
   active_ = true;
   ROS_DEBUG_NAMED("kdl","KDL solver initialized");
   return true;
 }
 
-bool URKinematicsPlugin::setRedundantJoints(const std::vector<unsigned int> &redundant_joints)
+bool UR3KinematicsPlugin::setRedundantJoints(const std::vector<unsigned int> &redundant_joints)
 {
   if(num_possible_redundant_joints_ < 0)
   {
@@ -435,7 +444,7 @@ counter++;
   return true;
 }
 
-int URKinematicsPlugin::getJointIndex(const std::string &name) const
+int UR3KinematicsPlugin::getJointIndex(const std::string &name) const
 {
   for (unsigned int i=0; i < ik_chain_info_.joint_names.size(); i++) {
     if (ik_chain_info_.joint_names[i] == name)
@@ -444,7 +453,7 @@ int URKinematicsPlugin::getJointIndex(const std::string &name) const
   return -1;
 }
 
-int URKinematicsPlugin::getKDLSegmentIndex(const std::string &name) const
+int UR3KinematicsPlugin::getKDLSegmentIndex(const std::string &name) const
 {
   int i=0;
   while (i < (int)kdl_chain_.getNrOfSegments()) {
@@ -456,12 +465,12 @@ int URKinematicsPlugin::getKDLSegmentIndex(const std::string &name) const
   return -1;
 }
 
-bool URKinematicsPlugin::timedOut(const ros::WallTime &start_time, double duration) const
+bool UR3KinematicsPlugin::timedOut(const ros::WallTime &start_time, double duration) const
 {
   return ((ros::WallTime::now()-start_time).toSec() >= duration);
 }
 
-bool URKinematicsPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
+bool UR3KinematicsPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
                                         const std::vector<double> &ik_seed_state,
                                         std::vector<double> &solution,
                                         moveit_msgs::MoveItErrorCodes &error_code,
@@ -480,7 +489,7 @@ bool URKinematicsPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
                           options);
 }
   
-bool URKinematicsPlugin::getPositionIK( const std::vector<geometry_msgs::Pose> &ik_poses,
+bool UR3KinematicsPlugin::getPositionIK( const std::vector<geometry_msgs::Pose> &ik_poses,
                                         const std::vector<double> &ik_seed_state,
                                         std::vector< std::vector<double> >& solutions,
                                         kinematics::KinematicsResult& result,
@@ -523,7 +532,7 @@ bool URKinematicsPlugin::getPositionIK( const std::vector<geometry_msgs::Pose> &
   return false;
 }
 
-bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
+bool UR3KinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
                                            const std::vector<double> &ik_seed_state,
                                            double timeout,
                                            std::vector<double> &solution,
@@ -543,7 +552,7 @@ bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
                           options);
 }
 
-bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
+bool UR3KinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
                                            const std::vector<double> &ik_seed_state,
                                            double timeout,
                                            const std::vector<double> &consistency_limits,
@@ -562,7 +571,7 @@ bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
                           options);
 }
 
-bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
+bool UR3KinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
                                            const std::vector<double> &ik_seed_state,
                                            double timeout,
                                            std::vector<double> &solution,
@@ -581,7 +590,7 @@ bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
                           options);
 }
 
-bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
+bool UR3KinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
                                            const std::vector<double> &ik_seed_state,
                                            double timeout,
                                            const std::vector<double> &consistency_limits,
@@ -604,7 +613,7 @@ typedef std::pair<int, double> idx_double;
 bool comparator(const idx_double& l, const idx_double& r)
 { return l.second < r.second; }
 
-bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
+bool UR3KinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
                                            const std::vector<double> &ik_seed_state,
                                            double timeout,
                                            std::vector<double> &solution,
@@ -623,7 +632,7 @@ bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
   return false;  
 }
 
-bool URKinematicsPlugin::getAllIK(const geometry_msgs::Pose &ik_pose,
+bool UR3KinematicsPlugin::getAllIK(const geometry_msgs::Pose &ik_pose,
                                   const std::vector<double> &ik_seed_state,
                                   double timeout,
                                   std::vector< std::vector<double> >& solutions,
@@ -703,16 +712,17 @@ bool URKinematicsPlugin::getAllIK(const geometry_msgs::Pose &ik_pose,
     tf::poseMsgToKDL(ik_pose, kdl_ik_pose);
     kdl_ik_pose_ur_chain = pose_base.Inverse() * kdl_ik_pose * pose_tip.Inverse();
     
+    
     kdl_ik_pose_ur_chain.Make4x4((double*) homo_ik_pose);
    
 #if KDL_OLD_BUG_FIX
     // in older versions of KDL, setting this flag might be necessary
     for(int i=0; i<3; i++) homo_ik_pose[i][3] *= 1000; // strange KDL fix
+    
 #endif
     /////////////////////////////////////////////////////////////////////////////
-
     // Do the analytic IK
-    num_sols = inverse((double*) homo_ik_pose, (double*) q_ik_sols, 
+    num_sols = ur3_inverse((double*) homo_ik_pose, (double*) q_ik_sols, 
                        jnt_pos_test(ur_joint_inds_start_+5));
     
     if (num_sols<=0)
@@ -861,7 +871,7 @@ bool URKinematicsPlugin::getAllIK(const geometry_msgs::Pose &ik_pose,
   return false;
 }
 
-bool URKinematicsPlugin::getPositionFK(const std::vector<std::string> &link_names,
+bool UR3KinematicsPlugin::getPositionFK(const std::vector<std::string> &link_names,
                                         const std::vector<double> &joint_angles,
                                         std::vector<geometry_msgs::Pose> &poses) const
 {
@@ -907,12 +917,12 @@ bool URKinematicsPlugin::getPositionFK(const std::vector<std::string> &link_name
   return valid;
 }
 
-const std::vector<std::string>& URKinematicsPlugin::getJointNames() const
+const std::vector<std::string>& UR3KinematicsPlugin::getJointNames() const
 {
   return ik_chain_info_.joint_names;
 }
 
-const std::vector<std::string>& URKinematicsPlugin::getLinkNames() const
+const std::vector<std::string>& UR3KinematicsPlugin::getLinkNames() const
 {
   return ik_chain_info_.link_names;
 }
