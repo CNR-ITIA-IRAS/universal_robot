@@ -370,6 +370,7 @@ bool UR10KinematicsPlugin::initialize(const std::string &robot_description,
   }
   // if successful, the kinematic chain includes a serial chain of the UR joints
 
+  
   if (!kdl_tree.getChain(getBaseFrame(), ur_link_names_.front(), kdl_base_chain_))
   {
     ROS_ERROR("Something wrong");
