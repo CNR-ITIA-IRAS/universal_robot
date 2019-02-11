@@ -19,7 +19,6 @@
 
   <buildtool_depend>catkin</buildtool_depend>
   <run_depend>urdf</run_depend>
-  <run_depend>xacro</run_depend>
 
   <export>
   </export>

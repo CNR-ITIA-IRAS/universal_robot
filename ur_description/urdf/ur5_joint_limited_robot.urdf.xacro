@@ -9,7 +9,7 @@
   <xacro:include filename="$(find ur_description)/urdf/ur5.urdf.xacro" />
 
   <!-- arm -->
-  <xacro:ur5_robot prefix="" joint_limited="true"
+  <xacro:ur5_robot prefix="ur5_" joint_limited="true"
     shoulder_pan_lower_limit="${-pi}" shoulder_pan_upper_limit="${pi}"
     shoulder_lift_lower_limit="${-pi}" shoulder_lift_upper_limit="${pi}"
     elbow_joint_lower_limit="${-pi}" elbow_joint_upper_limit="${pi}"
@@ -18,12 +18,28 @@
     wrist_3_lower_limit="${-pi}" wrist_3_upper_limit="${pi}"
   />
 
+
   <link name="world" />
 
-  <joint name="world_joint" type="fixed">
+<!--  World joints of ur5-->
+  <joint name="ur5" type="fixed">
     <parent link="world" />
-    <child link = "base_link" />
+    <child link = "ur5_base_link" />
     <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
   </joint>
+
+<!--  World joints of ur10-->
+<!--  <link name="ur10" />
+  <joint name="ur10_world_joint" type="fixed">
+    <parent link="world" />
+    <child link = "ur10_base_link" />
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+  </joint>-->
+
+
+
+
+
+
 
 </robot>

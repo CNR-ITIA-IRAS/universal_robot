@@ -87,6 +87,15 @@ install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 install(DIRECTORY urdf DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 install(DIRECTORY meshes DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
+FILE(GLOB_RECURSE UrdfFiles "urdf/*")
+add_custom_target(urdf SOURCES ${UrdfFiles})
+
+FILE(GLOB_RECURSE LaunchFiles "launch/*")
+add_custom_target(launch SOURCES ${LaunchFiles})
+
+FILE(GLOB_RECURSE MeshesFiles "meshes/*")
+add_custom_target(meshes SOURCES ${MeshesFiles})
+
 # all install targets should use catkin DESTINATION variables
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 

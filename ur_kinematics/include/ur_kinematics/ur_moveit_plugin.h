@@ -116,12 +116,20 @@ namespace ur_kinematics
 * @brief Default constructor
 */
     URKinematicsPlugin();
+    
 
     virtual bool getPositionIK(const geometry_msgs::Pose &ik_pose,
                                const std::vector<double> &ik_seed_state,
                                std::vector<double> &solution,
                                moveit_msgs::MoveItErrorCodes &error_code,
                                const kinematics::KinematicsQueryOptions &options = kinematics::KinematicsQueryOptions()) const;
+    
+    virtual bool getPositionIK(const std::vector<geometry_msgs::Pose> &ik_poses,
+                               const std::vector<double> &ik_seed_state,
+                               std::vector< std::vector<double> >& solutions,
+                               kinematics::KinematicsResult& result,
+                               const kinematics::KinematicsQueryOptions &options) const;
+
 
     virtual bool searchPositionIK(const geometry_msgs::Pose &ik_pose,
                                   const std::vector<double> &ik_seed_state,
@@ -237,6 +245,15 @@ namespace ur_kinematics
                                 bool lock_redundancy) const;
 
     bool isRedundantJoint(unsigned int index) const;
+    
+    bool getAllIK (const geometry_msgs::Pose &ik_pose,
+                  const std::vector<double> &ik_seed_state,
+                  double timeout,
+                  std::vector< std::vector<double> >& solutions,
+                  const IKCallbackFn &solution_callback,
+                  moveit_msgs::MoveItErrorCodes &error_code,
+                  const std::vector<double> &consistency_limits,
+                  const kinematics::KinematicsQueryOptions &options) const;
 
     bool active_; /** Internal variable that indicates whether solvers are configured and ready */
 
@@ -276,6 +293,8 @@ namespace ur_kinematics
     // UR base link, and the UR tip link to the group tip link
     KDL::Chain kdl_base_chain_;
     KDL::Chain kdl_tip_chain_;
+    
+    moveit_msgs::MoveItErrorCodes error_code_;
 
   };
 }

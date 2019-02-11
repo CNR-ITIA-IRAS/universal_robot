@@ -88,6 +88,8 @@
 #include <ur_kinematics/ur_moveit_plugin.h>
 #include <ur_kinematics/ur_kin.h>
 
+#include <kdl/frames_io.hpp>
+
 //register KDLKinematics as a KinematicsBase implementation
 CLASS_LOADER_REGISTER_CLASS(ur_kinematics::URKinematicsPlugin, kinematics::KinematicsBase)
 
@@ -175,8 +177,12 @@ bool URKinematicsPlugin::initialize(const std::string &robot_description,
 
   ros::NodeHandle private_handle("~");
   rdf_loader::RDFLoader rdf_loader(robot_description_);
-  const srdf::ModelSharedPtr &srdf = rdf_loader.getSRDF();
-  const urdf::ModelInterfaceSharedPtr &urdf_model = rdf_loader.getURDF();
+  const boost::shared_ptr<srdf::Model> &srdf = rdf_loader.getSRDF();
+#if ROS_VERSION_MINIMUM(1, 13, 0) 
+  const std::shared_ptr<urdf::ModelInterface>& urdf_model = rdf_loader.getURDF();
+#else
+  const boost::shared_ptr<urdf::ModelInterface>& urdf_model = rdf_loader.getURDF();
+#endif
 
   if (!urdf_model || !srdf)
   {
@@ -473,6 +479,49 @@ bool URKinematicsPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
                           consistency_limits,
                           options);
 }
+  
+bool URKinematicsPlugin::getPositionIK( const std::vector<geometry_msgs::Pose> &ik_poses,
+                                        const std::vector<double> &ik_seed_state,
+                                        std::vector< std::vector<double> >& solutions,
+                                        kinematics::KinematicsResult& result,
+                                        const kinematics::KinematicsQueryOptions &options) const
+{
+  std::vector<double> solution;
+  result.solution_percentage = 0.0;
+
+  bool supported = false;
+  if(std::find(supported_methods_.begin(),supported_methods_.end(),options.discretization_method) == supported_methods_.end())
+  {
+    result.kinematic_error = kinematics::KinematicErrors::UNSUPORTED_DISCRETIZATION_REQUESTED;
+    return false;
+  }
+
+  if(ik_poses.size() != 1)
+  {
+    logError("moveit.kinematics_base: This kinematic solver does not support getPositionIK for multiple poses");
+    result.kinematic_error = kinematics::KinematicErrors::MULTIPLE_TIPS_NOT_SUPPORTED;
+    return false;
+  }
+
+  if(ik_poses.size() == 0)
+  {
+    logError("moveit.kinematics_base: Input ik_poses array is empty");
+    result.kinematic_error = kinematics::KinematicErrors::EMPTY_TIP_POSES;
+    return false;
+  }
+
+  std::vector<double> consistency_limits;
+  const IKCallbackFn solution_callback = 0;
+  moveit_msgs::MoveItErrorCodes error_code;
+  if( getAllIK(ik_poses[0], ik_seed_state, default_timeout_,solutions, solution_callback, error_code, consistency_limits, options) )
+  {
+    assert(solutions.size()>0);
+    solution = solutions[0];
+    return true;
+  }
+  
+  return false;
+}
 
 bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
                                            const std::vector<double> &ik_seed_state,
@@ -564,6 +613,25 @@ bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
                                            const std::vector<double> &consistency_limits,
                                            const kinematics::KinematicsQueryOptions &options) const
 {
+  std::vector< std::vector<double> > solutions;
+  if( getAllIK(ik_pose, ik_seed_state, timeout,solutions, solution_callback, error_code, consistency_limits, options) )
+  {
+    solution = solutions[0];
+    return true;
+  }
+
+  return false;  
+}
+
+bool URKinematicsPlugin::getAllIK(const geometry_msgs::Pose &ik_pose,
+                                  const std::vector<double> &ik_seed_state,
+                                  double timeout,
+                                  std::vector< std::vector<double> >& solutions,
+                                  const IKCallbackFn &solution_callback,
+                                  moveit_msgs::MoveItErrorCodes &error_code,
+                                  const std::vector<double> &consistency_limits,
+                                  const kinematics::KinematicsQueryOptions &options) const
+{
   ros::WallTime n1 = ros::WallTime::now();
   if(!active_) {
     ROS_ERROR_NAMED("kdl","kinematics not active");
@@ -587,7 +655,7 @@ bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
   for(int i=0; i<dimension_; i++)
     jnt_seed_state(i) = ik_seed_state[i];
 
-  solution.resize(dimension_);
+  //solution.resize(dimension_);
 
   KDL::ChainFkSolverPos_recursive fk_solver_base(kdl_base_chain_);
   KDL::ChainFkSolverPos_recursive fk_solver_tip(kdl_tip_chain_);
@@ -616,8 +684,8 @@ bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
       jnt_pos_base(i) = jnt_pos_test(i);
     for(uint32_t i=0; i<jnt_pos_tip.rows(); i++)
       jnt_pos_tip(i) = jnt_pos_test(i + ur_joint_inds_start_ + 6);
-    for(uint32_t i=0; i<jnt_seed_state.rows(); i++)
-      solution[i] = jnt_pos_test(i);
+    //for(uint32_t i=0; i<jnt_seed_state.rows(); i++)
+    //  solution[i] = jnt_pos_test(i);
 
     if(fk_solver_base.JntToCart(jnt_pos_base, pose_base) < 0) {
       ROS_ERROR_NAMED("kdl", "Could not compute FK for base chain");
@@ -636,6 +704,7 @@ bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
     kdl_ik_pose_ur_chain = pose_base.Inverse() * kdl_ik_pose * pose_tip.Inverse();
     
     kdl_ik_pose_ur_chain.Make4x4((double*) homo_ik_pose);
+   
 #if KDL_OLD_BUG_FIX
     // in older versions of KDL, setting this flag might be necessary
     for(int i=0; i<3; i++) homo_ik_pose[i][3] *= 1000; // strange KDL fix
@@ -646,6 +715,8 @@ bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
     num_sols = inverse((double*) homo_ik_pose, (double*) q_ik_sols, 
                        jnt_pos_test(ur_joint_inds_start_+5));
     
+    if (num_sols<=0)
+      return false;
     
     uint16_t num_valid_sols;
     std::vector< std::vector<double> > q_ik_valid_sols;
@@ -657,24 +728,27 @@ bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
       
       for(uint16_t j=0; j<6; j++)
       {
+        if( 0 < (q_ik_sols[i][j]- ik_chain_info_.limits[j].max_position) && (q_ik_sols[i][j]- ik_chain_info_.limits[j].max_position) < 1e-8 )
+          q_ik_sols[i][j] = ik_chain_info_.limits[j].max_position;
+        
+        if( -1e-8 < (q_ik_sols[i][j]- ik_chain_info_.limits[j].min_position) && (q_ik_sols[i][j]- ik_chain_info_.limits[j].min_position) < 0 )
+          q_ik_sols[i][j] = ik_chain_info_.limits[j].min_position;
+        
         if((q_ik_sols[i][j] <= ik_chain_info_.limits[j].max_position) && (q_ik_sols[i][j] >= ik_chain_info_.limits[j].min_position))
         { 
           valid_solution[j] = q_ik_sols[i][j];
           valid = true;
-          continue;
-        }
-        else if ((q_ik_sols[i][j] > ik_chain_info_.limits[j].max_position) && (q_ik_sols[i][j]-2*M_PI > ik_chain_info_.limits[j].min_position))
+        } 
+        else if ((q_ik_sols[i][j]-2*M_PI <= ik_chain_info_.limits[j].max_position) && (q_ik_sols[i][j]-2*M_PI >= ik_chain_info_.limits[j].min_position))
         {
           valid_solution[j] = q_ik_sols[i][j]-2*M_PI;
           valid = true;
-          continue;
-        }
-        else if ((q_ik_sols[i][j] < ik_chain_info_.limits[j].min_position) && (q_ik_sols[i][j]+2*M_PI < ik_chain_info_.limits[j].max_position))
+        } 
+        else if ((q_ik_sols[i][j]+2*M_PI <= ik_chain_info_.limits[j].max_position) && (q_ik_sols[i][j]+2*M_PI >= ik_chain_info_.limits[j].min_position))
         {
           valid_solution[j] = q_ik_sols[i][j]+2*M_PI;
           valid = true;
-          continue;
-        }
+        } 
         else
         {
           valid = false;
@@ -717,6 +791,8 @@ bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
     printf("end\n");
 #endif
 
+    std::vector< bool > oks;
+    solutions.clear();
     for(uint16_t i=0; i<weighted_diffs.size(); i++) {
       if(weighted_diffs[i].second == std::numeric_limits<double>::infinity()) {
         // rest are infinity, no more feasible solutions
@@ -725,14 +801,18 @@ bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
 
       // copy the best solution to the output
       int cur_idx = weighted_diffs[i].first;
-      solution = q_ik_valid_sols[cur_idx];
+      solutions.push_back( q_ik_valid_sols[cur_idx] );
 
+      moveit_msgs::MoveItErrorCodes error_code;
       // see if this solution passes the callback function test
       if(!solution_callback.empty())
-        solution_callback(ik_pose, solution, error_code);
+        
+        solution_callback(ik_pose, solutions.back(), error_code);
+
       else
         error_code.val = error_code.SUCCESS;
 
+      oks.push_back( (error_code.val == error_code_.SUCCESS) );
       if(error_code.val == error_code.SUCCESS) {
 #if 0
         std::vector<std::string> fk_link_names;
@@ -748,9 +828,14 @@ bool URKinematicsPlugin::searchPositionIK(const geometry_msgs::Pose &ik_pose,
           printf("\n");
         }
 #endif
-        return true;
       }
     }
+    
+    bool ret = true;
+    std::for_each(oks.begin(),oks.end(), [&](bool v){ ret &= v; } );
+    if(ret)
+      return true;
+
     // none of the solutions were both consistent and passed the solution callback
 
     if(options.lock_redundant_joints) {
