@@ -177,7 +177,7 @@ bool UR5KinematicsPlugin::initialize(const std::string &robot_description,
 
   ros::NodeHandle private_handle("~/"+group_name);
   rdf_loader::RDFLoader rdf_loader(robot_description_);
-  const boost::shared_ptr<srdf::Model> &srdf = rdf_loader.getSRDF();
+  const auto &srdf = rdf_loader.getSRDF();
 #if ROS_VERSION_MINIMUM(1, 13, 0) 
   const std::shared_ptr<urdf::ModelInterface>& urdf_model = rdf_loader.getURDF();
 #else
@@ -507,14 +507,14 @@ bool UR5KinematicsPlugin::getPositionIK( const std::vector<geometry_msgs::Pose> 
 
   if(ik_poses.size() != 1)
   {
-    logError("moveit.kinematics_base: This kinematic solver does not support getPositionIK for multiple poses");
+    ROS_ERROR("moveit.kinematics_base: This kinematic solver does not support getPositionIK for multiple poses");
     result.kinematic_error = kinematics::KinematicErrors::MULTIPLE_TIPS_NOT_SUPPORTED;
     return false;
   }
 
   if(ik_poses.size() == 0)
   {
-    logError("moveit.kinematics_base: Input ik_poses array is empty");
+    ROS_ERROR("moveit.kinematics_base: Input ik_poses array is empty");
     result.kinematic_error = kinematics::KinematicErrors::EMPTY_TIP_POSES;
     return false;
   }
