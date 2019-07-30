@@ -16,7 +16,7 @@
   <xacro:property name="forearm_mass" value="3.87" />
   <xacro:property name="wrist_1_mass" value="1.96" />
   <xacro:property name="wrist_2_mass" value="1.96" />
-  <xacro:property name="wrist_3_mass" value="0.202" />
+  <xacro:property name="wrist_3_mass" value="1"  /> <!--"0.202"-->
 
   <!-- These parameters are borrowed from the urcontrol.conf file
        but are not verified for the correct permutation.
